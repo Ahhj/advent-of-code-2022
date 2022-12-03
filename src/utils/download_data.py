@@ -1,6 +1,6 @@
 from aocd import get_data
 import datetime
-import config
+import config as config
 
 
 def download_data(year=None, day=None):
@@ -21,5 +21,5 @@ if __name__ == "__main__":
         year = min(config.YEAR, today_dt.year)
         n_days = today_dt.day
 
-    for day in range(1, n_days+1):
+    for day in range(1, n_days + 1):
         download_data(year=year, day=day)

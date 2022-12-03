@@ -2,8 +2,8 @@
 from __future__ import annotations
 import itertools
 import aocd
-import config
-from solutions.day1 import read_input_data
+import config as config
+from src.solutions.day1 import read_input_data
 
 DAY = 2
 
