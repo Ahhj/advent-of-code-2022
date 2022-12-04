@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Iterable
 import aocd
 import config as config
+from src.utils.read_input import read_input_data
 
 DAY = 1
 
@@ -13,15 +14,6 @@ def tokenize_integers(text: str, delimiter="\n") -> Iterable[int]:
 
 def reduce_map_of_map(x):
     return list(map(list, x))
-
-
-def read_input_data(day) -> str:
-    input_path = config.DATA_DIR / f"input_{config.YEAR}_{day}.txt"
-
-    with input_path.open("r") as input_file:
-        input_data = input_file.read()
-
-    return input_data
 
 
 def clean_input_data(input_data: str) -> Iterable[Iterable[int]]:
@@ -48,5 +40,4 @@ aocd.submit(largest_calories, part="a", year=config.YEAR, day=DAY)
 
 # %% # Part b
 _, largest_3_calories = zip(*total_calories_asc[:3])
-solution_b = sum(largest_3_calories)
-aocd.submit(solution_b, part="b", year=config.YEAR, day=DAY)
+aocd.submit(sum(largest_3_calories), part="b", year=config.YEAR, day=DAY)

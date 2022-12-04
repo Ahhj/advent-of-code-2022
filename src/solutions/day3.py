@@ -4,13 +4,13 @@ from itertools import starmap
 import string
 import aocd
 import config as config
-from src.solutions.day1 import read_input_data
+from src.utils.read_input import read_input_data
 
 
 DAY = 3
 
 
-def get_common_elements(*s):
+def intersections(*s):
     return set(s[0]).intersection(*s[1:])
 
 
@@ -34,7 +34,7 @@ rucksack_data = input_data.split("\n")
 compartment_data = map(lambda x: group_without_overlaps(x, len(x) // 2), rucksack_data)
 
 # Find the duplicates
-common_item_types = starmap(get_common_elements, compartment_data)
+common_item_types = starmap(intersections, compartment_data)
 duplicated_item_types = pluck_first(common_item_types)
 
 # Map the priorities of the duplicates
@@ -48,7 +48,7 @@ group_size = 3
 grouped_rucksack_data = group_without_overlaps(rucksack_data, group_size)
 
 # Find the common item types
-common_item_types = starmap(get_common_elements, grouped_rucksack_data)
+common_item_types = starmap(intersections, grouped_rucksack_data)
 badge_item_types = pluck_first(common_item_types)
 
 # Map the priorities of the duplicates
