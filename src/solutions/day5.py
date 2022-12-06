@@ -13,12 +13,11 @@ DAY = 5
 
 
 def process_moves(moves_data):
-    moves = map(
-        curry(re.findall, r"move (\d+) from (\d) to (\d)"), moves_data.split("\n")
-    )
+    moves_pattern = r"move (\d+) from (\d) to (\d)"
+    find_moves = curry(re.findall, moves_pattern)
+    moves = map(find_moves, moves_data.split("\n"))
     moves = chain.from_iterable(moves)
-    moves = list(moves)
-    return moves
+    return list(moves)
 
 
 def process_stacks(crates_data):
@@ -29,6 +28,7 @@ def process_stacks(crates_data):
     columns = zip(*rows)
 
     stacks = OrderedDict({})
+
     for i, col in zip(indexes, columns):
         # Stacks are ordered left-to-right from top-to-bottom
         stacks[i] = list(filter(None, map(str.strip, col)))
@@ -38,13 +38,11 @@ def process_stacks(crates_data):
 
 def rearrange_crates(stacks, moves, one_by_one=True):
     stacks = deepcopy(stacks)
+
     for n, i, j in moves:
-        n = int(n)
-
-        crates = stacks[i][:n][:: 1 - 2 * one_by_one]
-
-        # Move the crates
-        stacks[j] = crates + stacks[j]
+        n = int(n)  # For indexing
+        crates_to_move = stacks[i][:n][:: 1 - 2 * one_by_one]
+        stacks[j] = crates_to_move + stacks[j]
         stacks[i] = stacks[i][n:]
 
     return stacks
