@@ -28,11 +28,9 @@ def count_until_all_chars_distinct(input_data, window_length):
         all_chars_distinct = len(window) == len(set(window))
 
         if all_chars_distinct:
-            break
+            return chars_processed
 
         chars_processed += 1
-
-    return chars_processed
 
 
 input_data = read_input_data(DAY)
