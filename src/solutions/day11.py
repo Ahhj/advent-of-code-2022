@@ -1,40 +1,70 @@
 # %%
+from __future__ import annotations
+import re
+import functools
 import aocd
-from itertools import product
-from operator import mul
+from operator import mul, add
 import config
+from src.utils.read_input import read_input_data
 
 DAY = 11
 
 # %%
+GLOBAL_MODULO = functools.reduce(mul, [2, 3, 5, 7, 11, 13, 17, 19, 23, 27])
 
 
-class Item:
-    def __init__(self, starting_value):
-        self.starting_value = starting_value
+def update_remainder(op, value, other, divisor):
+    # Use properties of modulo operator to prevent numbers getting too large
+    return op(value % divisor, other % divisor) % divisor
 
-    def __mul__(self, x):
-        pass
 
-    def __add__(self, x):
-        pass
+class _Item:
+    # Empty clast, just for type hints inside functools.singledispatchmethod
+    pass
 
-    def __mod__(self, x):
-        pass
+
+class Item(_Item):
+    def __init__(self, initial_value):
+        self.value = initial_value
+
+    @functools.singledispatchmethod
+    def __mul__(self, other: int):
+        self.value = update_remainder(mul, self.value, other, GLOBAL_MODULO)
+        return self
+
+    @__mul__.register
+    def _(self, other: _Item):
+        # Override for multiplication by another item value
+        return self * other.value
+
+    def __add__(self, other):
+        self.value = update_remainder(add, self.value, other, GLOBAL_MODULO)
+        return self
+
+    def __mod__(self, divisor):
+        return self.value % divisor
+
+    def __div__(self, other):
+        self.value /= other
+        return self
+
+    def __floordiv__(self, other):
+        self.value //= other
+        return self
 
 
 class Monkey:
     def __init__(self, index, starting_items, operation, test_params):
         self.index = index
-        self.starting_items = list(map(Item, starting_items[:]))
-        self.current_items = self.starting_items[:]
+        self.starting_items = starting_items[:]
+        self.current_items = list(map(Item, starting_items))
         self._operation = operation
         self.divisible_by = test_params["divisible_by"]
         self.if_true = test_params["if_true"]
         self.if_false = test_params["if_false"]
         self.n_inspections = 0
 
-    def turn(self, divide_by=3):
+    def turn(self, divide_by=1):
         for item in self.current_items:
             new_worry = self._inspect(item)
             new_worry = self._bored(new_worry, divide_by)
@@ -63,96 +93,55 @@ class Monkey:
         self.current_items.append(new_item)
 
     def reset(self):
-        self.current_items = self.starting_items[:]
+        self.current_items = list(map(Item, self.starting_items))
         self.n_inspections = 0
 
 
-test_monkeys = [
-    Monkey(
-        0,
-        starting_items=[79, 98],
-        operation=lambda old: old * 19,
-        test_params=dict(divisible_by=23, if_true=2, if_false=3),
-    ),
-    Monkey(
-        1,
-        starting_items=[54, 65, 75, 74],
-        operation=lambda old: old + 6,
-        test_params=dict(divisible_by=19, if_true=2, if_false=0),
-    ),
-    Monkey(
-        2,
-        starting_items=[79, 60, 97],
-        operation=lambda old: old * old,
-        test_params=dict(divisible_by=13, if_true=1, if_false=3),
-    ),
-    Monkey(
-        3,
-        starting_items=[74],
-        operation=lambda old: old + 3,
-        test_params=dict(divisible_by=17, if_true=0, if_false=1),
-    ),
-]
+def get_operation_func(operation_string):
+    parts = operation_string.split()
+    operator_string = parts.pop(1)
+    operator_func = {"*": mul, "+": add}.get(operator_string)
+    left_string, right_string = parts
 
-monkeys = [
-    Monkey(
-        0,
-        starting_items=[66, 71, 94],
-        operation=lambda old: old * 5,
-        test_params=dict(divisible_by=3, if_true=7, if_false=4),
-    ),
-    Monkey(
-        1,
-        starting_items=[70],
-        operation=lambda old: old + 6,
-        test_params=dict(divisible_by=17, if_true=3, if_false=0),
-    ),
-    Monkey(
-        2,
-        starting_items=[62, 68, 56, 65, 94, 78],
-        operation=lambda old: old + 5,
-        test_params=dict(divisible_by=2, if_true=3, if_false=1),
-    ),
-    Monkey(
-        3,
-        starting_items=[89, 94, 94, 67],
-        operation=lambda old: old + 2,
-        test_params=dict(divisible_by=19, if_true=7, if_false=0),
-    ),
-    Monkey(
-        4,
-        starting_items=[71, 61, 73, 65, 98, 98, 63],
-        operation=lambda old: old * 7,
-        test_params=dict(divisible_by=11, if_true=5, if_false=6),
-    ),
-    Monkey(
-        5,
-        starting_items=[55, 62, 68, 61, 60],
-        operation=lambda old: old + 7,
-        test_params=dict(divisible_by=5, if_true=2, if_false=1),
-    ),
-    Monkey(
-        6,
-        starting_items=[93, 91, 69, 64, 72, 89, 50, 71],
-        operation=lambda old: old + 1,
-        test_params=dict(divisible_by=13, if_true=5, if_false=2),
-    ),
-    Monkey(
-        7,
-        starting_items=[76, 50],
-        operation=lambda old: old * old,
-        test_params=dict(divisible_by=7, if_true=4, if_false=6),
-    ),
-]
+    if left_string == "old" and right_string == "old":
+        def _operation(x):
+            return operator_func(x, x)
+
+    elif left_string == "old":
+        def _operation(x):
+            return operator_func(x, int(right_string))
+
+    elif right_string == "old":
+        def _operation(x):
+            return operator_func(int(left_string), x)
+
+    else:
+        raise ValueError(f"Unable to parse operation '{operation_string}'")
+
+    return _operation
 
 
-def one_round(monkeys, divide_by=3):
+def parse_monkey(monkey_data):
+    index, starting_items, operation, divisible_by, if_true, if_false = monkey_data
+    return Monkey(
+        index=int(index),
+        starting_items=list(map(int, starting_items.split(", "))),
+        operation=get_operation_func(operation),
+        test_params=dict(
+            divisible_by=int(divisible_by),
+            if_true=int(if_true),
+            if_false=int(if_false)
+        )
+    )
+
+
+def one_round(monkeys, divide_by=1):
     for m in monkeys:
         for item, recipient in m.turn(divide_by=divide_by):
             monkeys[recipient].receive(item)
 
 
-def evaluate_monkey_business(monkeys, n_rounds=20, divide_by=3):
+def evaluate_monkey_business(monkeys, n_rounds=20, divide_by=1):
     [m.reset() for m in monkeys]
 
     for _ in range(n_rounds):
@@ -163,50 +152,18 @@ def evaluate_monkey_business(monkeys, n_rounds=20, divide_by=3):
     return monkey_business
 
 
-monkey_business = evaluate_monkey_business(monkeys, 20)
-# aocd.submit(monkey_business, part="a", day=DAY, year=config.YEAR)
+monkey_pattern = r"Monkey (\d):\n  Starting items: (.*)\n  Operation: new = (.*)\n  Test: divisible by (.*)\n    If true: throw to monkey (\d)\n    If false: throw to monkey (\d)"
+
+input_data = read_input_data(DAY)
+monkey_data = re.findall(monkey_pattern, input_data)
+monkeys = list(map(parse_monkey, monkey_data))
+
+monkey_business = evaluate_monkey_business(monkeys, 20, divide_by=3)
+aocd.submit(monkey_business, part="a", day=DAY, year=config.YEAR)
 
 # %% Part b
 
-divide_bys = [1]
-subtracts = [0]
-round_results = [
-    [1, [2, 4, 3, 6]],
-    [20, [99, 97, 8, 103]],
-    [1000, [5204, 4792, 199, 5192]],
-    # [10000, [52166, 47830, 1938, 52013]
-]
-monkey_business = None
+monkey_business = evaluate_monkey_business(monkeys, 10000, divide_by=1)
+aocd.submit(monkey_business, part="b", day=DAY, year=config.YEAR)
 
-for divide_by, subtract in product(divide_bys, subtracts):
-    [m.reset() for m in test_monkeys]
-    elapsed_rounds = 0
-
-    for n_rounds, expected_result in round_results:
-        for _ in range(n_rounds - elapsed_rounds):
-            one_round(test_monkeys, divide_by=divide_by)
-
-        elapsed_rounds += n_rounds
-        actual_result = [m.n_inspections for m in test_monkeys]
-        print(n_rounds, actual_result)
-
-        if actual_result != expected_result:
-            break
-        else:
-            continue
-
-    else:
-        # print(f"Fitted parameters:\ndivide_by={divide_by}\nsubtract={subtract}")
-        # # Use the parameters to evaluate on the real monkeys
-        # monkey_business = evaluate_monkey_business(
-        #     monkeys,
-        #     n_rounds=10000,
-        #     divide_by=divide_by,
-        #     subtract=subtract,
-        # )
-        break
-
-# assert monkey_business != None, "Could not find suitable parameters"
-
-# aocd.submit(monkey_business, part="b", day=DAY, year=config.YEAR)
 # %%
